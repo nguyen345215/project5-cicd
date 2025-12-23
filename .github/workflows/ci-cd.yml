@@ -32,4 +32,35 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        pus
+        push: true
+        tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+    - name: Deploy to Dev
+      if: github.ref == 'refs/heads/develop'
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.DEV_USER }}@${{ secrets.DEV_IP }} << 'EOF'
+        docker pull ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker stop project5 || true
+        docker rm project5 || true
+        docker run -d --name project5 -p 3000:3000 ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        EOF
+
+    - name: Deploy to Staging
+      if: github.ref == 'refs/heads/staging'
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_IP }} << 'EOF'
+        docker pull ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker stop project5 || true
+        docker rm project5 || true
+        docker run -d --name project5 -p 3000:3000 ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        EOF
+
+    - name: Deploy to Production
+      if: github.ref == 'refs/heads/main'
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_USER }}@${{ secrets.PROD_IP }} << 'EOF'
+        docker pull ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker stop project5 || true
+        docker rm project5 || true
+        docker run -d --name project5 -p 80:3000 ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        EOF
